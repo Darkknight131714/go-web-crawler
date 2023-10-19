@@ -34,10 +34,11 @@ func getCrawlResult(ctx *gin.Context) {
 	url := req.Url
 	obj, found := c.Get(url)
 	if found {
-		url := obj.(*URL)
+		urll := obj.(*URL)
 		ctx.JSON(200, gin.H{
-			"Crawled": url.urls,
+			"Crawled": urll.urls,
 		})
+		c.Set(url, obj, cache.DefaultExpiration)
 		return
 	}
 	u := URL{}
