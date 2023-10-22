@@ -5,8 +5,8 @@ Hello there guys, This is a project for making a web crawler in go with some add
 Current Things built: 
     1) Crawler: Done
     2) Caching: Done
-    3) Retrying: Not Done
-    4) Priority Customers: Not Done
+    3) Retrying: Done(Will retry once regardless of error type in visiting. Can optimize here.)
+    4) Priority Customers: Done(Paid Customers will go first on the basis of their timestamp. When all paid customers are done, unpaid customers will go on the basis of their timestamp.)
     5) Concurrency: Not Done
     6) Admin Access : Not Done
 
