@@ -1,7 +1,6 @@
 package main
 
 import (
-	"container/heap"
 	"fmt"
 	"time"
 
@@ -10,27 +9,75 @@ import (
 	"github.com/patrickmn/go-cache"
 )
 
-type IntHeap []time.Time
-
-func (h IntHeap) Len() int           { return len(h) }
-func (h IntHeap) Less(i, j int) bool { return h[i].Before(h[j]) }
-func (h IntHeap) Swap(i, j int)      { h[i], h[j] = h[j], h[i] }
-
-func (h *IntHeap) Push(x any) {
-	*h = append(*h, x.(time.Time))
+type MaxHeap struct {
+	arr []time.Time
 }
 
-func (h *IntHeap) Pop() any {
-	old := *h
-	n := len(old)
-	x := old[n-1]
-	*h = old[0 : n-1]
-	return x
+func (h *MaxHeap) Insert(key time.Time) {
+	h.arr = append(h.arr, key)
+	h.MaxHeapify(len(h.arr) - 1)
 }
 
-func (h *IntHeap) Top() any {
-	old := *h
-	return old[old.Len()-1]
+func (h *MaxHeap) Length() int {
+	return len(h.arr)
+}
+
+func (h *MaxHeap) MaxHeapify(ind int) {
+	for h.arr[parent(ind)].Before(h.arr[ind]) {
+		h.arr[parent(ind)], h.arr[ind] = h.arr[ind], h.arr[parent(ind)]
+		ind = parent(ind)
+	}
+}
+
+func (h *MaxHeap) Top() time.Time {
+	return h.arr[0]
+}
+
+func (h *MaxHeap) Pop() time.Time {
+	val := h.Top()
+	h.arr[0] = h.arr[len(h.arr)-1]
+	h.arr = h.arr[:len(h.arr)-1]
+	h.HeapifyDown()
+	return val
+}
+
+func (h *MaxHeap) HeapifyDown() {
+	l := leftChild(0)
+	r := rightChild(0)
+	comp := 0
+	currInd := 0
+	for l <= len(h.arr)-1 {
+		if l == len(h.arr)-1 {
+			comp = l
+		} else if h.arr[l].After(h.arr[r]) {
+			comp = l
+		} else {
+			comp = r
+		}
+		if h.arr[comp].After(h.arr[currInd]) {
+			h.arr[comp], h.arr[currInd] = h.arr[currInd], h.arr[comp]
+			currInd = comp
+			l = leftChild(currInd)
+			r = rightChild(currInd)
+		} else {
+			break
+		}
+	}
+}
+
+func leftChild(ind int) int {
+	val := 2*ind + 1
+	return val
+}
+
+func rightChild(ind int) int {
+	val := 2*ind + 2
+	return val
+}
+
+func parent(ind int) int {
+	val := (ind - 1) / 2
+	return val
 }
 
 type URL struct {
@@ -43,18 +90,17 @@ type UserRequest struct {
 
 var c *cache.Cache
 
-var paid IntHeap
-var unPaid IntHeap
+var paid MaxHeap
+var unPaid MaxHeap
 
 var isUnpaidUsing bool
 
 func main() {
-	paid := &IntHeap{}
-	unPaid := &IntHeap{}
+	paid := &MaxHeap{}
+	unPaid := &MaxHeap{}
+	paid.Length()
+	unPaid.Length()
 	isUnpaidUsing = false
-	heap.Init(paid)
-	heap.Init(unPaid)
-
 	c = cache.New(60*time.Minute, 60*time.Minute)
 	r := gin.Default()
 	r.GET("/crawl", getCrawlResult)
@@ -76,9 +122,9 @@ func getCrawlResult(ctx *gin.Context) {
 	}
 	now := time.Now()
 	if isPaid {
-		heap.Push(&paid, now)
+		paid.Insert(now)
 	} else {
-		heap.Push(&unPaid, now)
+		unPaid.Insert(now)
 	}
 	obj, found := c.Get(url)
 	if found {
@@ -91,7 +137,7 @@ func getCrawlResult(ctx *gin.Context) {
 	}
 	u := URL{}
 	if isPaid {
-		for (paid.Len() > 0 && paid.Top() != now) || isUnpaidUsing {
+		for (paid.Length() > 0 && paid.Top() != now) || isUnpaidUsing {
 			continue
 		}
 		crawl(url, 2, &u)
@@ -101,7 +147,7 @@ func getCrawlResult(ctx *gin.Context) {
 		})
 		paid.Pop()
 	} else {
-		for (unPaid.Len() > 0 && unPaid.Top() != now) || isUnpaidUsing || paid.Len() != 0 {
+		for (unPaid.Length() > 0 && unPaid.Top() != now) || isUnpaidUsing || paid.Length() != 0 {
 			continue
 		}
 		isUnpaidUsing = true
